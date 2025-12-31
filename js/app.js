@@ -1,7 +1,7 @@
 import { callOpenAI, callGemini } from './api.js';
 
 // --- Configuration ---
-const MAX_TURNS = 10;
+let maxTurnCount = parseInt(localStorage.getItem('max_turns'), 10) || 10;
 const BOT_A_NAME = 'Bot A (Optimist)';
 const BOT_B_NAME = 'Bot B (Skeptic)';
 
@@ -14,6 +14,9 @@ let conversationHistory = [];
 let isRunning = false;
 let turnCount = 0;
 let isMuted = false;
+let currentTopic = '';
+let timeoutId = null;
+let currentTheme = localStorage.getItem('theme') || 'dark';
 
 let currentProvider = localStorage.getItem('selected_provider') || 'openai';
 let currentModel = localStorage.getItem('selected_model') || 'gpt-3.5-turbo';
@@ -50,16 +53,19 @@ const synth = window.speechSynthesis;
 const chatContainer = document.getElementById('chat-container');
 const topicInput = document.getElementById('topic-input');
 const startBtn = document.getElementById('start-btn');
+const resumeBtn = document.getElementById('resume-btn');
 const stopBtn = document.getElementById('stop-btn');
 const settingsBtn = document.getElementById('settings-btn');
 const settingsModal = document.getElementById('settings-modal');
 const muteBtn = document.getElementById('mute-btn');
+const themeBtn = document.getElementById('theme-btn');
 const speedSlider = document.getElementById('speed-slider');
 const speedValue = document.getElementById('speed-value');
 
 // Settings Inputs
 const providerSelect = document.getElementById('provider-select');
 const modelSelect = document.getElementById('model-select');
+const maxTurnsInput = document.getElementById('max-turns');
 const openaiWrapper = document.getElementById('openai-wrapper');
 const geminiWrapper = document.getElementById('gemini-wrapper');
 const apiKeyInput = document.getElementById('api-key');
@@ -135,6 +141,8 @@ function updateSettingsUI() {
 
     if (apiKeys.openai && apiKeyInput) apiKeyInput.value = 'Loaded from .env or Configured';
     if (apiKeys.gemini && geminiKeyInput) geminiKeyInput.value = 'Loaded from .env or Configured';
+
+    if (maxTurnsInput) maxTurnsInput.value = maxTurnCount;
 }
 
 function initVoices() {
@@ -151,6 +159,10 @@ function initVoices() {
     await loadEnv();
     updateSettingsUI();
 
+    // Apply Theme
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    if (themeBtn) themeBtn.innerText = currentTheme === 'dark' ? '☀️' : '🌙';
+
     // Voice loading often requires a wait
     if (speechSynthesis.onvoiceschanged !== undefined) {
         speechSynthesis.onvoiceschanged = initVoices;
@@ -160,6 +172,7 @@ function initVoices() {
 
 // --- Event Listeners ---
 if (startBtn) startBtn.addEventListener('click', startDebate);
+if (resumeBtn) resumeBtn.addEventListener('click', resumeDebate);
 if (stopBtn) stopBtn.addEventListener('click', stopDebate);
 
 if (muteBtn) {
@@ -169,6 +182,15 @@ if (muteBtn) {
         if (isMuted) {
             synth.cancel();
         }
+    });
+}
+
+if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        localStorage.setItem('theme', currentTheme);
+        themeBtn.innerText = currentTheme === 'dark' ? '☀️' : '🌙';
     });
 }
 
@@ -216,6 +238,14 @@ if (saveSettingsBtn) {
             }
         }
 
+        if (maxTurnsInput) {
+            const val = parseInt(maxTurnsInput.value, 10);
+            if (val && val >= 2) {
+                maxTurnCount = val;
+                localStorage.setItem('max_turns', val);
+            }
+        }
+
         localStorage.setItem('selected_provider', currentProvider);
         localStorage.setItem('selected_model', currentModel);
         if (settingsModal) settingsModal.classList.add('hidden');
@@ -243,27 +273,53 @@ async function startDebate() {
     isRunning = true;
     conversationHistory = [];
     turnCount = 0;
+    currentTopic = topic;
+    if (timeoutId) clearTimeout(timeoutId);
 
     // Init voices again just in case
     if (voices.length === 0) initVoices();
 
     chatContainer.innerHTML = '';
-    startBtn.disabled = true;
-    topicInput.disabled = true;
+
+    // UI Updates
+    startBtn.classList.add('hidden');
+    resumeBtn.classList.add('hidden');
     stopBtn.disabled = false;
+    topicInput.disabled = true;
 
     appendMessage('User', `Topic: ${topic}`, 'system');
 
     await runTurn(topic);
 }
 
+function resumeDebate() {
+    if (!currentTopic) return;
+
+    isRunning = true;
+    startBtn.classList.add('hidden');
+    resumeBtn.classList.add('hidden');
+    stopBtn.disabled = false;
+    topicInput.disabled = true;
+
+    appendMessage('System', 'Resuming debate...', 'system');
+    runTurn(currentTopic);
+}
+
 function stopDebate() {
     isRunning = false;
-    startBtn.disabled = false;
-    topicInput.disabled = false;
+    if (timeoutId) clearTimeout(timeoutId);
+
+    // UI Updates
+    startBtn.classList.remove('hidden');
+    startBtn.innerText = 'Start New';
+    resumeBtn.classList.remove('hidden');
+    resumeBtn.disabled = false;
+
     stopBtn.disabled = true;
+    // topicInput.disabled = false; // Keep disabled so they don't change topic mid-stream easily without reset
+
     synth.cancel(); // Stop speaking
-    appendMessage('System', 'Debate stopped.', 'system');
+    appendMessage('System', 'Debate paused.', 'system');
 }
 
 function speak(text, botName) {
@@ -299,8 +355,14 @@ function speak(text, botName) {
 }
 
 async function runTurn(topic) {
-    if (!isRunning || turnCount >= MAX_TURNS) {
+    if (!isRunning) return;
+
+    if (turnCount >= maxTurnCount) {
+        appendMessage('System', 'Max turns reached. Debate finished.', 'system');
         stopDebate();
+        // Hide resume generic cleanup
+        resumeBtn.classList.add('hidden');
+        topicInput.disabled = false;
         return;
     }
 
@@ -354,12 +416,17 @@ async function runTurn(topic) {
         turnCount++;
 
         const waitTimeSeconds = parseInt(speedSlider.value, 10) || 5;
-        setTimeout(() => runTurn(topic), waitTimeSeconds * 1000);
+
+        if (isRunning) {
+            timeoutId = setTimeout(() => runTurn(topic), waitTimeSeconds * 1000);
+        }
 
     } catch (error) {
         console.error(error);
-        appendMessage('System', `Error (${currentProvider}): ${error.message}`, 'system');
-        stopDebate();
+        if (isRunning) {
+            appendMessage('System', `Error (${currentProvider}): ${error.message}`, 'system');
+            stopDebate();
+        }
     }
 }
 

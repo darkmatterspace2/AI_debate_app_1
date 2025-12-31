@@ -13,6 +13,25 @@
     --bot-b-border: #fbcfe8;
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --input-bg: #ffffff;
+}
+
+[data-theme="dark"] {
+    --bg-color: #0f172a;
+    --chat-bg: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --primary-color: #60a5fa;
+    --primary-hover: #3b82f6;
+    --danger-color: #f87171;
+    --border-color: #334155;
+    --bot-a-bg: #172554;
+    --bot-a-border: #1e40af;
+    --bot-b-bg: #4c0519;
+    --bot-b-border: #9f1239;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5);
+    --input-bg: #020617;
 }
 
 * {
@@ -66,7 +85,10 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    background-color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background-color: var(--chat-bg);
 }
 
 .empty-state {
@@ -163,6 +185,8 @@ input[type="password"] {
     font-size: 1rem;
     outline: none;
     transition: border-color 0.2s;
+    background-color: var(--chat-bg);
+    color: var(--text-primary);
 }
 
 input[type="text"]:focus,
@@ -237,7 +261,7 @@ button:disabled {
 }
 
 .modal-content {
-    background-color: white;
+    background-color: var(--chat-bg);
     padding: 2rem;
     border-radius: 12px;
     box-shadow: var(--shadow-md);

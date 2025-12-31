@@ -30,6 +30,7 @@
                 <input type="text" id="topic-input" placeholder="Enter a topic (e.g., Is coffee healthy?)"
                     autocomplete="off">
                 <button id="start-btn" class="primary-btn">Start Debate</button>
+                <button id="resume-btn" class="primary-btn hidden">Resume</button>
                 <button id="stop-btn" class="secondary-btn" disabled>Stop</button>
             </div>
 
@@ -39,6 +40,7 @@
                     <input type="range" id="speed-slider" min="5" max="60" value="5" step="1">
                 </div>
                 <div class="settings-toggle">
+                    <button id="theme-btn" class="icon-btn" title="Toggle Theme">🌙</button>
                     <button id="mute-btn" class="icon-btn" title="Toggle Sound">🔊</button>
                     <button id="settings-btn" class="icon-btn" title="Settings">⚙️ API Settings</button>
                 </div>
@@ -64,6 +66,11 @@
                 <select id="model-select">
                     <!-- Populated by JS -->
                 </select>
+            </div>
+
+            <div class="form-group">
+                <label for="max-turns">Max Turns</label>
+                <input type="number" id="max-turns" min="2" max="100" value="10">
             </div>
 
             <div class="form-group" id="openai-wrapper">
