@@ -267,21 +267,35 @@ function stopDebate() {
 }
 
 function speak(text, botName) {
-    if (isMuted) return;
-    if (synth.speaking) synth.cancel();
+    return new Promise((resolve) => {
+        if (isMuted) {
+            resolve();
+            return;
+        }
+        if (synth.speaking) synth.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    if (botName === BOT_A_NAME && botAVoice) {
-        utterance.voice = botAVoice;
-        utterance.pitch = 1.1; // Slightly higher/optimistic
-        utterance.rate = 1.0;
-    } else if (botName === BOT_B_NAME && botBVoice) {
-        utterance.voice = botBVoice;
-        utterance.pitch = 0.9; // Slightly lower/skeptical
-        utterance.rate = 0.95;
-    }
+        const utterance = new SpeechSynthesisUtterance(text);
+        if (botName === BOT_A_NAME && botAVoice) {
+            utterance.voice = botAVoice;
+            utterance.pitch = 1.1; // Slightly higher/optimistic
+            utterance.rate = 1.0;
+        } else if (botName === BOT_B_NAME && botBVoice) {
+            utterance.voice = botBVoice;
+            utterance.pitch = 0.9; // Slightly lower/skeptical
+            utterance.rate = 0.95;
+        }
 
-    synth.speak(utterance);
+        utterance.onend = () => {
+            resolve();
+        };
+
+        utterance.onerror = (e) => {
+            console.error('Speech error:', e);
+            resolve(); // Resolve anyway to keep loop going
+        };
+
+        synth.speak(utterance);
+    });
 }
 
 async function runTurn(topic) {
@@ -330,7 +344,7 @@ async function runTurn(topic) {
         appendMessage(currentBotName, responseContent, isBotA ? 'bot-a' : 'bot-b');
 
         // Speak!
-        speak(responseContent, currentBotName);
+        await speak(responseContent, currentBotName);
 
         conversationHistory.push({
             name: currentBotName,
