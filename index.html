@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Bot Debate</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>AI Bot Debate</h1>
+            <p>Watch two AI personas discuss any topic.</p>
+        </header>
+
+        <main class="chat-container" id="chat-container">
+            <!-- Messages will appear here -->
+            <div class="empty-state">
+                <p>Enter a topic to start the debate.</p>
+            </div>
+        </main>
+
+        <div class="controls-area">
+            <div class="input-group">
+                <input type="text" id="topic-input" placeholder="Enter a topic (e.g., Is coffee healthy?)"
+                    autocomplete="off">
+                <button id="start-btn" class="primary-btn">Start Debate</button>
+                <button id="stop-btn" class="secondary-btn" disabled>Stop</button>
+            </div>
+
+            <div class="controls-row">
+                <div class="speed-control">
+                    <label for="speed-slider">Wait Time: <span id="speed-value">5s</span></label>
+                    <input type="range" id="speed-slider" min="5" max="60" value="5" step="1">
+                </div>
+                <div class="settings-toggle">
+                    <button id="mute-btn" class="icon-btn" title="Toggle Sound">🔊</button>
+                    <button id="settings-btn" class="icon-btn" title="Settings">⚙️ API Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>API Configuration</h2>
+
+            <div class="form-group">
+                <label for="provider-select">AI Provider</label>
+                <select id="provider-select">
+                    <option value="openai">OpenAI (GPT-3.5/4)</option>
+                    <option value="gemini">Google Gemini</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="openai-wrapper">
+                <label for="api-key">OpenAI API Key</label>
+                <input type="password" id="api-key" placeholder="sk-...">
+            </div>
+
+            <div class="form-group hidden" id="gemini-wrapper">
+                <label for="gemini-key">Gemini API Key</label>
+                <input type="password" id="gemini-key" placeholder="AIza...">
+            </div>
+
+            <p class="helper-text">Keys are stored locally in your browser.</p>
+
+            <div class="modal-actions">
+                <button id="save-settings-btn" class="primary-btn">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/api.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
