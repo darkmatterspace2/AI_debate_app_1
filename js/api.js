@@ -123,3 +123,38 @@ export async function callGemini(messages, apiKey, model = 'gemini-2.5-flash-lit
         throw error;
     }
 }
+
+export async function callGroq(messages, apiKey, model = 'llama-3.3-70b-versatile') {
+    const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+    if (!apiKey) {
+        throw new Error('Groq API Key is missing');
+    }
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: messages,
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || 'Unknown Groq API Error');
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+
+    } catch (error) {
+        console.error('Groq API Call Failed:', error);
+        throw error;
+    }
+}

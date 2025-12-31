@@ -1,4 +1,4 @@
-import { callOpenAI, callGemini } from './api.js';
+import { callOpenAI, callGemini, callGroq } from './api.js';
 import { PERSONAS } from './personas.js';
 
 // --- Configuration ---
@@ -25,7 +25,8 @@ let currentModel = localStorage.getItem('selected_model') || 'gpt-3.5-turbo';
 
 let apiKeys = {
     openai: localStorage.getItem('openai_api_key') || '',
-    gemini: localStorage.getItem('gemini_api_key') || ''
+    gemini: localStorage.getItem('gemini_api_key') || '',
+    groq: localStorage.getItem('groq_api_key') || ''
 };
 
 const PROVIDER_MODELS = {
@@ -42,6 +43,18 @@ const PROVIDER_MODELS = {
         { value: 'gemma-3-12b-it', label: 'Gemma 3 (12B)' },
         { value: 'gemma-3-4b-it', label: 'Gemma 3 (4B)' },
         { value: 'gemma-3-1b-it', label: 'Gemma 3 (1B)' }
+    ],
+    groq: [
+        // Production Models
+        { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B Versatile' },
+        { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
+        { value: 'openai/gpt-oss-120b', label: 'GPT OSS 120B' },
+        { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B' },
+        // Preview Models
+        { value: 'meta-llama/llama-4-maverick-17b-128e-instruct', label: 'Llama 4 Maverick 17B (Preview)' },
+        { value: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17B (Preview)' },
+        { value: 'moonshotai/kimi-k2-instruct-0905', label: 'Kimi K2 (Preview)' },
+        { value: 'qwen/qwen3-32b', label: 'Qwen3 32B (Preview)' }
     ]
 };
 
@@ -88,8 +101,10 @@ const voiceGenderBSelect = document.getElementById('voice-gender-b');
 const maxTurnsInput = document.getElementById('max-turns');
 const openaiWrapper = document.getElementById('openai-wrapper');
 const geminiWrapper = document.getElementById('gemini-wrapper');
+const groqWrapper = document.getElementById('groq-wrapper');
 const apiKeyInput = document.getElementById('api-key');
 const geminiKeyInput = document.getElementById('gemini-key');
+const groqKeyInput = document.getElementById('groq-key');
 const saveSettingsBtn = document.getElementById('save-settings-btn');
 
 // --- Initialization ---
@@ -153,14 +168,21 @@ function updateSettingsUI() {
         if (currentProvider === 'openai') {
             if (openaiWrapper) openaiWrapper.classList.remove('hidden');
             if (geminiWrapper) geminiWrapper.classList.add('hidden');
-        } else {
+            if (groqWrapper) groqWrapper.classList.add('hidden');
+        } else if (currentProvider === 'gemini') {
             if (openaiWrapper) openaiWrapper.classList.add('hidden');
             if (geminiWrapper) geminiWrapper.classList.remove('hidden');
+            if (groqWrapper) groqWrapper.classList.add('hidden');
+        } else if (currentProvider === 'groq') {
+            if (openaiWrapper) openaiWrapper.classList.add('hidden');
+            if (geminiWrapper) geminiWrapper.classList.add('hidden');
+            if (groqWrapper) groqWrapper.classList.remove('hidden');
         }
     }
 
     if (apiKeys.openai && apiKeyInput) apiKeyInput.value = 'Loaded from .env or Configured';
     if (apiKeys.gemini && geminiKeyInput) geminiKeyInput.value = 'Loaded from .env or Configured';
+    if (apiKeys.groq && groqKeyInput) groqKeyInput.value = 'Loaded or Configured';
 
     if (maxTurnsInput) maxTurnsInput.value = maxTurnCount;
     if (languageSelect) languageSelect.value = currentLanguage;
@@ -333,6 +355,14 @@ if (saveSettingsBtn) {
             if (newGeminiKey) {
                 apiKeys.gemini = newGeminiKey;
                 localStorage.setItem('gemini_api_key', newGeminiKey);
+            }
+        }
+
+        if (groqKeyInput && groqKeyInput.value && !groqKeyInput.value.startsWith('Loaded')) {
+            const newGroqKey = groqKeyInput.value.trim();
+            if (newGroqKey) {
+                apiKeys.groq = newGroqKey;
+                localStorage.setItem('groq_api_key', newGroqKey);
             }
         }
 
@@ -535,6 +565,8 @@ async function runTurn(topic) {
             responseContent = await callOpenAI(messages, activeKey, currentModel);
         } else if (currentProvider === 'gemini') {
             responseContent = await callGemini(messages, activeKey, currentModel);
+        } else if (currentProvider === 'groq') {
+            responseContent = await callGroq(messages, activeKey, currentModel);
         }
 
         const thinkingEl = document.getElementById(thinkingId);
