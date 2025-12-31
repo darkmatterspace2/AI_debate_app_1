@@ -36,12 +36,12 @@ export async function callOpenAI(messages, apiKey, model = 'gpt-3.5-turbo') {
     }
 }
 
-export async function callGemini(messages, apiKey) {
+export async function callGemini(messages, apiKey, model = 'gemini-2.5-flash-lite') {
     // Model: gemini-2.5-flash-preview-09-2025 is good for this
     // Model: gemini-2.5-flash-lite
-    
-    const MODEL_NAME = 'gemini-2.5-flash-lite';
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+    // Model: gemma-3-27b-it
+
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     if (!apiKey) {
         throw new Error('Gemini API Key is missing');
@@ -72,10 +72,27 @@ export async function callGemini(messages, apiKey) {
         }
     };
 
+    const isGemma = model.includes('gemma');
+
     if (systemMessage) {
-        payload.system_instruction = {
-            parts: [{ text: systemMessage.content }]
-        };
+        if (isGemma) {
+            // Gemma models (via API) often don't support 'system_instruction' yet or strictly.
+            // We merge the system prompt into the first user message.
+            if (contents.length > 0 && contents[0].role === 'user') {
+                contents[0].parts[0].text = `System Instruction: ${systemMessage.content}\n\n${contents[0].parts[0].text}`;
+            } else {
+                // If the first message isn't user (rare), or empty, just prepend a user message
+                contents.unshift({
+                    role: 'user',
+                    parts: [{ text: `System Instruction: ${systemMessage.content}` }]
+                });
+            }
+        } else {
+            // Standard Gemini models support system_instruction
+            payload.system_instruction = {
+                parts: [{ text: systemMessage.content }]
+            };
+        }
     }
 
     try {

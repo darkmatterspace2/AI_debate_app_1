@@ -16,9 +16,28 @@ let turnCount = 0;
 let isMuted = false;
 
 let currentProvider = localStorage.getItem('selected_provider') || 'openai';
+let currentModel = localStorage.getItem('selected_model') || 'gpt-3.5-turbo';
+
 let apiKeys = {
     openai: localStorage.getItem('openai_api_key') || '',
     gemini: localStorage.getItem('gemini_api_key') || ''
+};
+
+const PROVIDER_MODELS = {
+    openai: [
+        { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+        { value: 'gpt-4o', label: 'GPT-4o' },
+        { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' }
+    ],
+    gemini: [
+        { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.0 Flash Lite' },
+        { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+        { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+        { value: 'gemma-3-27b-it', label: 'Gemma 3 (27B)' },
+        { value: 'gemma-3-12b-it', label: 'Gemma 3 (12B)' },
+        { value: 'gemma-3-4b-it', label: 'Gemma 3 (4B)' },
+        { value: 'gemma-3-1b-it', label: 'Gemma 3 (1B)' }
+    ]
 };
 
 // --- TTS State ---
@@ -40,6 +59,7 @@ const speedValue = document.getElementById('speed-value');
 
 // Settings Inputs
 const providerSelect = document.getElementById('provider-select');
+const modelSelect = document.getElementById('model-select');
 const openaiWrapper = document.getElementById('openai-wrapper');
 const geminiWrapper = document.getElementById('gemini-wrapper');
 const apiKeyInput = document.getElementById('api-key');
@@ -82,6 +102,27 @@ async function loadEnv() {
 function updateSettingsUI() {
     if (providerSelect) {
         providerSelect.value = currentProvider;
+
+        // Populate Models
+        if (modelSelect) {
+            modelSelect.innerHTML = '';
+            const models = PROVIDER_MODELS[currentProvider] || [];
+            models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.value;
+                opt.innerText = m.label;
+                modelSelect.appendChild(opt);
+            });
+
+            // Set selected model if it exists in the list, otherwise default to first
+            const modelExists = models.find(m => m.value === currentModel);
+            if (modelExists) {
+                modelSelect.value = currentModel;
+            } else {
+                modelSelect.value = models[0]?.value || '';
+                currentModel = modelSelect.value; // Update state to match UI
+            }
+        }
 
         if (currentProvider === 'openai') {
             if (openaiWrapper) openaiWrapper.classList.remove('hidden');
@@ -151,6 +192,12 @@ if (providerSelect) {
     });
 }
 
+if (modelSelect) {
+    modelSelect.addEventListener('change', (e) => {
+        currentModel = e.target.value;
+    });
+}
+
 if (saveSettingsBtn) {
     saveSettingsBtn.addEventListener('click', () => {
         if (apiKeyInput && apiKeyInput.value && !apiKeyInput.value.startsWith('Loaded')) {
@@ -170,6 +217,7 @@ if (saveSettingsBtn) {
         }
 
         localStorage.setItem('selected_provider', currentProvider);
+        localStorage.setItem('selected_model', currentModel);
         if (settingsModal) settingsModal.classList.add('hidden');
     });
 }
@@ -269,9 +317,9 @@ async function runTurn(topic) {
         const activeKey = apiKeys[currentProvider];
 
         if (currentProvider === 'openai') {
-            responseContent = await callOpenAI(messages, activeKey);
+            responseContent = await callOpenAI(messages, activeKey, currentModel);
         } else if (currentProvider === 'gemini') {
-            responseContent = await callGemini(messages, activeKey);
+            responseContent = await callGemini(messages, activeKey, currentModel);
         }
 
         const thinkingEl = document.getElementById(thinkingId);
