@@ -1,5 +1,6 @@
 {
- "liveServer.settings.host": "127.0.0.1",
+//  "liveServer.settings.host": "127.0.0.1",
+  "liveServer.settings.host": "0.0.0.0",
   "liveServer.settings.port": 5504,
   "liveServer.settings.noReload": true,
   "liveServer.settings.wait": 100000
