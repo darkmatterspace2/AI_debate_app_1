@@ -1,13 +1,10 @@
 import { callOpenAI, callGemini } from './api.js';
+import { PERSONAS } from './personas.js';
 
 // --- Configuration ---
 let maxTurnCount = parseInt(localStorage.getItem('max_turns'), 10) || 10;
-const BOT_A_NAME = 'Bot A (Optimist)';
-const BOT_B_NAME = 'Bot B (Skeptic)';
-
-const SYSTEM_PROMPT_A = `You are ${BOT_A_NAME}. You are an eternal optimist. You always see the bright side of things, even in controversial topics. Your tone is cheerful, encouraging, and slightly naive. Keep your responses short (under 50 words) and conversational.`;
-
-const SYSTEM_PROMPT_B = `You are ${BOT_B_NAME}. You are a critical skeptic. You always find flaws, risks, or downsides. Your tone is analytical, dry, and perhaps a bit cynical. Keep your responses short (under 50 words) and conversational.`;
+// const BOT_A_NAME = 'Bot A'; // Dynamic now
+// const BOT_B_NAME = 'Bot B'; // Dynamic now
 
 // --- State ---
 let conversationHistory = [];
@@ -17,6 +14,8 @@ let isMuted = false;
 let currentTopic = '';
 let timeoutId = null;
 let currentTheme = localStorage.getItem('theme') || 'dark';
+let currentPersonaA = localStorage.getItem('persona_a') || 'optimist';
+let currentPersonaB = localStorage.getItem('persona_b') || 'skeptic';
 
 let currentProvider = localStorage.getItem('selected_provider') || 'openai';
 let currentModel = localStorage.getItem('selected_model') || 'gpt-3.5-turbo';
@@ -65,6 +64,8 @@ const speedValue = document.getElementById('speed-value');
 // Settings Inputs
 const providerSelect = document.getElementById('provider-select');
 const modelSelect = document.getElementById('model-select');
+const personaASelect = document.getElementById('persona-a-select');
+const personaBSelect = document.getElementById('persona-b-select');
 const maxTurnsInput = document.getElementById('max-turns');
 const openaiWrapper = document.getElementById('openai-wrapper');
 const geminiWrapper = document.getElementById('gemini-wrapper');
@@ -143,6 +144,29 @@ function updateSettingsUI() {
     if (apiKeys.gemini && geminiKeyInput) geminiKeyInput.value = 'Loaded from .env or Configured';
 
     if (maxTurnsInput) maxTurnsInput.value = maxTurnCount;
+
+    // Populate Persona Selectors
+    if (personaASelect && personaASelect.options.length === 0) {
+        Object.keys(PERSONAS).forEach(key => {
+            const p = PERSONAS[key];
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.innerText = p.name;
+            personaASelect.appendChild(opt);
+        });
+        personaASelect.value = currentPersonaA;
+    }
+
+    if (personaBSelect && personaBSelect.options.length === 0) {
+        Object.keys(PERSONAS).forEach(key => {
+            const p = PERSONAS[key];
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.innerText = p.name;
+            personaBSelect.appendChild(opt);
+        });
+        personaBSelect.value = currentPersonaB;
+    }
 }
 
 function initVoices() {
@@ -246,6 +270,15 @@ if (saveSettingsBtn) {
             }
         }
 
+        if (personaASelect) {
+            currentPersonaA = personaASelect.value;
+            localStorage.setItem('persona_a', currentPersonaA);
+        }
+        if (personaBSelect) {
+            currentPersonaB = personaBSelect.value;
+            localStorage.setItem('persona_b', currentPersonaB);
+        }
+
         localStorage.setItem('selected_provider', currentProvider);
         localStorage.setItem('selected_model', currentModel);
         if (settingsModal) settingsModal.classList.add('hidden');
@@ -331,13 +364,15 @@ function speak(text, botName) {
         if (synth.speaking) synth.cancel();
 
         const utterance = new SpeechSynthesisUtterance(text);
-        if (botName === BOT_A_NAME && botAVoice) {
+
+        // Dynamic voice assignment based on turn would be better, but sticky to A/B is fine for now
+        if (botName.includes('(Bot A)') || botName === PERSONAS[currentPersonaA].name) {
             utterance.voice = botAVoice;
-            utterance.pitch = 1.1; // Slightly higher/optimistic
+            utterance.pitch = 1.1;
             utterance.rate = 1.0;
-        } else if (botName === BOT_B_NAME && botBVoice) {
+        } else {
             utterance.voice = botBVoice;
-            utterance.pitch = 0.9; // Slightly lower/skeptical
+            utterance.pitch = 0.9;
             utterance.rate = 0.95;
         }
 
@@ -367,8 +402,12 @@ async function runTurn(topic) {
     }
 
     const isBotA = turnCount % 2 === 0;
-    const currentBotName = isBotA ? BOT_A_NAME : BOT_B_NAME;
-    const systemPrompt = isBotA ? SYSTEM_PROMPT_A : SYSTEM_PROMPT_B;
+
+    // Resolve dynamic names and prompts
+    const personaKey = isBotA ? currentPersonaA : currentPersonaB;
+    const personaData = PERSONAS[personaKey];
+    const currentBotName = personaData.name;
+    const systemPrompt = personaData.system;
 
     const messages = [
         { role: 'system', content: systemPrompt },
