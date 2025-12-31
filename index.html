@@ -37,7 +37,7 @@
             <div class="controls-row">
                 <div class="speed-control">
                     <label for="speed-slider">Wait Time: <span id="speed-value">5s</span></label>
-                    <input type="range" id="speed-slider" min="5" max="60" value="5" step="1">
+                    <input type="range" id="speed-slider" min="1" max="60" value="5" step="1">
                 </div>
                 <div class="settings-toggle">
                     <button id="theme-btn" class="icon-btn" title="Toggle Theme">🌙</button>
@@ -79,6 +79,40 @@
                 <label for="persona-b-select">Bot B Persona</label>
                 <select id="persona-b-select">
                     <!-- Populated by JS -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="language-select">Language</label>
+                <select id="language-select">
+                    <option value="en-US">English (US)</option>
+                    <option value="es-ES">Spanish</option>
+                    <option value="fr-FR">French</option>
+                    <option value="de-DE">German</option>
+                    <option value="hi-IN">Hindi</option>
+                    <option value="ja-JP">Japanese</option>
+                    <option value="zh-CN">Chinese</option>
+                    <option value="ru-RU">Russian</option>
+                    <option value="pt-BR">Portuguese</option>
+                    <option value="it-IT">Italian</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="voice-gender-a">Bot A Voice Gender</label>
+                <select id="voice-gender-a">
+                    <option value="auto">Auto (Match Persona)</option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="voice-gender-b">Bot B Voice Gender</label>
+                <select id="voice-gender-b">
+                    <option value="auto">Auto (Match Persona)</option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
                 </select>
             </div>
 

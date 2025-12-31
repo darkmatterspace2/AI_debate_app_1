@@ -302,8 +302,13 @@ button:disabled {
     padding: 2rem;
     border-radius: 12px;
     box-shadow: var(--shadow-md);
-    width: 100%;
+    width: 90%;
+    /* Slightly responsive width */
     max-width: 400px;
+    max-height: 85vh;
+    /* Prevent it from going off screen */
+    overflow-y: auto;
+    /* Enable vertical scroll */
 }
 
 .modal-content h2 {

@@ -16,6 +16,9 @@ let timeoutId = null;
 let currentTheme = localStorage.getItem('theme') || 'dark';
 let currentPersonaA = localStorage.getItem('persona_a') || 'optimist';
 let currentPersonaB = localStorage.getItem('persona_b') || 'skeptic';
+let currentLanguage = localStorage.getItem('language') || 'en-US';
+let voiceGenderA = localStorage.getItem('voice_gender_a') || 'auto';
+let voiceGenderB = localStorage.getItem('voice_gender_b') || 'auto';
 
 let currentProvider = localStorage.getItem('selected_provider') || 'openai';
 let currentModel = localStorage.getItem('selected_model') || 'gpt-3.5-turbo';
@@ -42,6 +45,19 @@ const PROVIDER_MODELS = {
     ]
 };
 
+const LANG_NAMES = {
+    'en-US': 'English',
+    'es-ES': 'Spanish',
+    'fr-FR': 'French',
+    'de-DE': 'German',
+    'hi-IN': 'Hindi',
+    'ja-JP': 'Japanese',
+    'zh-CN': 'Chinese',
+    'ru-RU': 'Russian',
+    'pt-BR': 'Portuguese',
+    'it-IT': 'Italian'
+};
+
 // --- TTS State ---
 let voices = [];
 let botAVoice = null;
@@ -66,6 +82,9 @@ const providerSelect = document.getElementById('provider-select');
 const modelSelect = document.getElementById('model-select');
 const personaASelect = document.getElementById('persona-a-select');
 const personaBSelect = document.getElementById('persona-b-select');
+const languageSelect = document.getElementById('language-select');
+const voiceGenderASelect = document.getElementById('voice-gender-a');
+const voiceGenderBSelect = document.getElementById('voice-gender-b');
 const maxTurnsInput = document.getElementById('max-turns');
 const openaiWrapper = document.getElementById('openai-wrapper');
 const geminiWrapper = document.getElementById('gemini-wrapper');
@@ -144,6 +163,9 @@ function updateSettingsUI() {
     if (apiKeys.gemini && geminiKeyInput) geminiKeyInput.value = 'Loaded from .env or Configured';
 
     if (maxTurnsInput) maxTurnsInput.value = maxTurnCount;
+    if (languageSelect) languageSelect.value = currentLanguage;
+    if (voiceGenderASelect) voiceGenderASelect.value = voiceGenderA;
+    if (voiceGenderBSelect) voiceGenderBSelect.value = voiceGenderB;
 
     // Populate Persona Selectors
     if (personaASelect && personaASelect.options.length === 0) {
@@ -171,12 +193,64 @@ function updateSettingsUI() {
 
 function initVoices() {
     voices = synth.getVoices();
-    // Try to find distinct voices
-    // Bot A (Optimist): Female or lighter voice
-    botAVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Google US English')) || voices[0];
+    console.log('Available Voices:', voices.map(v => `${v.name} (${v.lang})`)); // Debug log
 
-    // Bot B (Skeptic): Male or deeper voice if possible, or just a different one
-    botBVoice = voices.find(v => (v.name.includes('Male') || v.name.includes('Microsoft David')) && v !== botAVoice) || voices[1] || voices[0];
+    if (voices.length === 0) return;
+
+    const findVoice = (genderPref) => {
+        // 1. Filter by Language Code
+        let langCode = currentLanguage.split('-')[0]; // 'hi'
+        let langVoices = voices.filter(v => v.lang.startsWith(langCode));
+
+        // 2. Fallback: Filter by Language Name in Voice Name (e.g. "Microsoft Hemant - Hindi")
+        if (langVoices.length === 0) {
+            const langName = LANG_NAMES[currentLanguage] || '';
+            if (langName) {
+                langVoices = voices.filter(v => v.name.includes(langName));
+            }
+        }
+
+        // 3. Fallback: Filter by exact full code match if loose match failed (rare but helpful)
+        if (langVoices.length === 0) {
+            langVoices = voices.filter(v => v.lang === currentLanguage);
+        }
+
+        if (langVoices.length === 0) return null; // No voice for this language found
+
+        // 4. Filter by Gender (Heuristic based on name)
+        if (genderPref === 'female') {
+            return langVoices.find(v => v.name.includes('Female') || v.name.includes('Woman') || v.name.includes('Girl') || v.name.includes('Samantha') || v.name.includes('Zira') || v.name.includes('Kalpana')) || langVoices[0];
+        } else if (genderPref === 'male') {
+            return langVoices.find(v => v.name.includes('Male') || v.name.includes('Man') || v.name.includes('Boy') || v.name.includes('David') || v.name.includes('Hemant')) || langVoices[0];
+        }
+        return langVoices[0];
+    };
+
+    // Bot A
+    let genderA = voiceGenderA;
+    if (genderA === 'auto') genderA = 'female';
+    botAVoice = findVoice(genderA);
+
+    // Bot B
+    let genderB = voiceGenderB;
+    if (genderB === 'auto') genderB = 'male';
+
+    // Ensure distinct if possible
+    botBVoice = findVoice(genderB);
+
+    // If we have voices for this language, try to make them distinct
+    if (botBVoice && botAVoice && botBVoice === botAVoice && voices.length > 1) {
+        // Re-get the list to find a diff one
+        const langCode = currentLanguage.split('-')[0];
+        let langVoices = voices.filter(v => v.lang.startsWith(langCode));
+        if (langVoices.length === 0 && LANG_NAMES[currentLanguage]) {
+            langVoices = voices.filter(v => v.name.includes(LANG_NAMES[currentLanguage]));
+        }
+
+        if (langVoices.length > 1) {
+            botBVoice = langVoices.find(v => v !== botAVoice) || botAVoice;
+        }
+    }
 }
 
 (async () => {
@@ -278,6 +352,20 @@ if (saveSettingsBtn) {
             currentPersonaB = personaBSelect.value;
             localStorage.setItem('persona_b', currentPersonaB);
         }
+        if (languageSelect) {
+            currentLanguage = languageSelect.value;
+            localStorage.setItem('language', currentLanguage);
+        }
+        if (voiceGenderASelect) {
+            voiceGenderA = voiceGenderASelect.value;
+            localStorage.setItem('voice_gender_a', voiceGenderA);
+        }
+        if (voiceGenderBSelect) {
+            voiceGenderB = voiceGenderBSelect.value;
+            localStorage.setItem('voice_gender_b', voiceGenderB);
+        }
+
+        initVoices(); // Re-init voices based on new language/gender settings
 
         localStorage.setItem('selected_provider', currentProvider);
         localStorage.setItem('selected_model', currentModel);
@@ -364,16 +452,24 @@ function speak(text, botName) {
         if (synth.speaking) synth.cancel();
 
         const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = currentLanguage; // Explicitly set language for fallback
 
-        // Dynamic voice assignment based on turn would be better, but sticky to A/B is fine for now
+        // Assign voice only if we found a valid one for this language
+        let selectedVoice = null;
         if (botName.includes('(Bot A)') || botName === PERSONAS[currentPersonaA].name) {
-            utterance.voice = botAVoice;
+            selectedVoice = botAVoice;
             utterance.pitch = 1.1;
             utterance.rate = 1.0;
         } else {
-            utterance.voice = botBVoice;
+            selectedVoice = botBVoice;
             utterance.pitch = 0.9;
             utterance.rate = 0.95;
+        }
+
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+        } else {
+            console.warn(`No specific voice found for ${currentLanguage}, relying on browser default.`);
         }
 
         utterance.onend = () => {
@@ -407,7 +503,11 @@ async function runTurn(topic) {
     const personaKey = isBotA ? currentPersonaA : currentPersonaB;
     const personaData = PERSONAS[personaKey];
     const currentBotName = personaData.name;
-    const systemPrompt = personaData.system;
+    let systemPrompt = personaData.system;
+
+    // Append Language Directive
+    const languageName = document.getElementById('language-select')?.options[document.getElementById('language-select')?.selectedIndex]?.text || currentLanguage;
+    systemPrompt += ` IMPORTANT: Reply in ${languageName}.`;
 
     const messages = [
         { role: 'system', content: systemPrompt },
